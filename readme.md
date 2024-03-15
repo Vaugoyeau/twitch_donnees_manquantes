@@ -1,4 +1,4 @@
-Ce dossier a été créé suite pour le direct réalisé sur Twitch le 20 février 2024 à 14h :     
+Ce dossier a été créé suite pour le direct réalisé sur Twitch le 20 février 2024 à 14h : https://www.twitch.tv/videos/2068439847    
 
 Les données manquantes sont un sujet trop vaste pour tout abordé en 1h. Lors de ce live j'ai :   
   

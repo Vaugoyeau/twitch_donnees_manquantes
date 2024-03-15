@@ -29,7 +29,7 @@ Quelques soit le cas, il existent plusieurs origines aux données manquantes.
 
 # Type de données manquantes  
   
-Les données manquantes, représentées par `NA` ou autre peuvent avoir plusieurs origine :  
+Les données manquantes, représentées par `NA` ou autre peuvent avoir plusieurs origines :  
 
 -   La donnée **n'est pas compatible**. *Par exemple, une personne rentre du texte au lieu d'un numéro de téléphone.* Dans ce cas le **système ne prends pas en charge** la réponse et la qualifie en `NA` pour `Not Applicable`\
 -   La donnée **n'existe pas**. *Par exemple la personne n'a pas de numéro de téléphone*, dans ce cas, le système la qualifie de `NA` pour `Not Available`\
@@ -41,11 +41,39 @@ Il faut commencer par se demander ce que **signifie cette absence** et **comment
   
 # Conséquences des valeurs manquantes  
 
--   Perte d'information : Si la donnée peut-être retrouvée ou remplacée, pourquoi s'en empecher ?  
--   Erreur dans la généralisation : Si beaucoup de donnnées sont manquantes et que les conclusions se basent uniquement sur celles présentent, **est-ce que cela représente vraiment la réalité ?**  
+-   **Perte d'information** : Si la donnée peut-être retrouvée ou remplacée, pourquoi s'en empêcher ?  
+-   **Erreur dans la généralisation** : Si beaucoup de données sont manquantes et que les conclusions se basent uniquement sur celles présentent, **est-ce que cela représente vraiment la réalité ?**  
 -   Comportement de certains modèles stats  
   
 ```{r}
+
+library(tidyverse)
+library(missMDA)
+data("snorena")
+
+# régression logistique 
+regression_logistique <- glm(
+  snore ~ age + weight + size + alcohol, 
+  family = binomial, 
+  data = snorena
+  )
+
+regression_logistique
+summary(regression_logistique)
+
+regression_logistique_2 <- glm(
+  snore ~ age + alcohol, 
+  family = binomial, 
+  data = snorena
+  )
+
+AIC(regression_logistique, regression_logistique_2)
+summary(regression_logistique_2)
+
+# ACP
+library(FactoMineR)
+
+acp <- PCA(snorena |> select(where(is.numeric)))
 
 ```
   
@@ -57,6 +85,8 @@ Pour savoir comment agir, il faut commencer par quantifier et localiser les vale
 Une réalisation simple est l'utilisation de la fonciton `summary()` du package `{base}`.  
 ```{r}
 
+summary(snorena)
+
 ```
 
 
@@ -64,6 +94,9 @@ Le package `{naniar}` est spécialement adapté à la visualisation des données
 
 Visualisation du nombre ou de la proportion de données manquantes grâce aux fonctions `gg_miss_var()`.  
 ```{r}
+library(naniar)
+
+gg_miss_var(snorena, show_pct = TRUE)
 
 ```
   
@@ -71,11 +104,17 @@ La fonction `gg_miss_upset()` permet de représenter sur un graphique les variab
 
 ```{r}
 
+gg_miss_upset(snorena)
 
 ```
 
 La fonction `geom_miss_point()` permet de visualiser les valeurs manquantes sur les nuage de poin.  
 ```{r}
+
+ggplot(snorena) +
+  aes(x = size, y = weight) +
+  geom_miss_point() +
+  theme_classic()
 
 ```
 
@@ -87,6 +126,9 @@ Et il existe d'autres fonctions :
   
 ```{r}
 
+visdat::vis_miss(snorena)
+mice::md.pattern(snorena, rotate.names = TRUE)
+
 ```
 
 
@@ -97,17 +139,19 @@ Les données manquantes peuvent avoir été remplacées par d'autres. Il est pos
 :::
 
 # L'analyse descriptive  
-L'analyse descriptive a pour but d'analyser les variables pour connaître la nature des données mais aussi identifier les valeurs extrêmes (à ne pas confondre avec aberrentes).  
+L'analyse descriptive a pour but d'analyser les variables pour connaître la nature des données mais aussi identifier les valeurs extrêmes (à ne pas confondre avec aberrantes).  
   
 Utilisation de fonctions rapide comme :  
 
 - `skim()` du package `{skimr}`  
 - `dfSummary()` du package `{summarytools}`  
-- `create_report()` du package `{DataExplorer}`  
+- `create_report()` du package `{DataExplorer}` : `DataExplorer::create_report(snorena)`  
   
 ```{r}
 
+skimr::skim(snorena)
 
+summarytools::dfSummary(snorena)
 ```
 
 
@@ -119,8 +163,74 @@ Utilisation de fonctions rapide comme :
         -   Déterminée à partir des autres données de la variables : *moyenne*, *médiane*, *minimum*, *maximum*...\
         -   Modélisée à partir des autres variables grâce à *une régression linéaire*, *une ACP*...\
 -   Ne pas remplacer la données mais garder le `NA`\
--   Supprimer la ligne ou la colonne concernée. **Cette solution est la moins envisageable et ne doit être mise en place que si les deux autres ne sont pas possibles.**
+-   Supprimer la ligne ou la colonne concernée. **Cette solution est la moins envisageable et ne doit être mise en place que si les deux autres ne sont pas possibles.**  
   
+```{r}
+
+# remplacement par régression logistique
+snore_pred <- predict(
+  regression_logistique_2, 
+  newdata = snorena |> filter(is.na(snore))
+  )
+
+snorena_mod <- snorena |> 
+  mutate(
+    snore = 
+      case_when(
+        is.na(snore) ~ "N",
+        TRUE ~ snore
+      ) |> 
+      as.factor()
+  )
+
+summary(snorena_mod)
+
+# régression linéaire
+ggplot(snorena_mod) + 
+  aes(x = weight, y = size) +
+  geom_miss_point() +
+  geom_smooth(method = "lm") +
+  ggpubr::stat_regline_equation() +
+  theme_classic()
+
+
+snorena_mod <- snorena_mod |> 
+  mutate(
+    size = 
+      case_when(
+        is.na(size) ~ 120 + 0.69 * weight,
+        TRUE ~ size
+      )
+  )
+
+summary(snorena_mod)
+
+
+# regression linéaire
+reg_lin <- lm(weight ~ size, data = snorena)
+reg_lin$coefficients
+
+snorena_mod <- snorena_mod |> 
+  mutate(
+    weight = 
+      case_when(
+        is.na(weight) ~ 
+          reg_lin$coefficients[1] + reg_lin$coefficients[2] * size,
+        TRUE ~ weight
+      )
+  )
+
+summary(snorena_mod)
+
+```
+
+::: callout-note  
+# `replace_na()` du package `{tidyr}`  
+
+Lors du live j'ai oublié de présenter la fonction `replace_na()` du package `{tidyr}` !  
+Cette fonction permet de remplacer les valeurs manquantes [d'une colonne ou plusieurs colonnes par une valeur spécifique](https://tidyr.tidyverse.org/reference/replace_na.html).  
+
+:::
   
 # En savoir un peu plus sur moi  
 Bonjour, 
