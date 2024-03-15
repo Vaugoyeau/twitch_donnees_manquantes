@@ -77,12 +77,14 @@ acp <- PCA(snorena |> select(where(is.numeric)))
 
 ```
   
+La régression logistique supprime les lignes avec les données manquantes alors que l'analyse en composantes principales les remplace par la moyenne de la colonne.  
+Il est donc important de garder en tête comment sont traités les données manquantes en fonction des statistiques utilisées.  
   
 # Identifier les valeurs manquantes  
   
 Pour savoir comment agir, il faut commencer par quantifier et localiser les valeurs manquantes.  
 
-Une réalisation simple est l'utilisation de la fonciton `summary()` du package `{base}`.  
+Une réalisation simple est l'utilisation de la fonction `summary()` du package `{base}`.  
 ```{r}
 
 summary(snorena)
@@ -92,7 +94,7 @@ summary(snorena)
 
 Le package `{naniar}` est spécialement adapté à la visualisation des données manquantes.  
 
-Visualisation du nombre ou de la proportion de données manquantes grâce aux fonctions `gg_miss_var()`.  
+Visualisation du nombre (argument `show_pct = FALSE`) ou de la proportion (argument `show_pct = TRUE`) de données manquantes grâce aux fonctions `gg_miss_var()`.    
 ```{r}
 library(naniar)
 
@@ -135,7 +137,7 @@ mice::md.pattern(snorena, rotate.names = TRUE)
 ::: callout-warning
 ## Détection des valeurs manquantes
 
-Les données manquantes peuvent avoir été remplacées par d'autres. Il est possible de les détecter grâce à l'**analyse descriptive**.
+Les données manquantes peuvent avoir été remplacées par d'autres. Il est nécessaire de faite une **analyse descriptive** pour les détecter.  
 :::
 
 # L'analyse descriptive  
